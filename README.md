@@ -1,7 +1,8 @@
 # Longitudinal Metagenome QC Tool
 
-A robust, user-friendly pipeline for detecting **mislabeled**, **abnormal**, and **duplicate** samples in longitudinal metagenomic studies.  
+A tool for detecting **mislabeled**, **abnormal**, and **duplicate** samples in longitudinal metagenomic studies.  
 Designed for reproducibility, transparency, and seamless integration with large-scale bioinformatics workflows.
+![A introduction of the method](Figure1.png)
 
 ---
 
@@ -10,8 +11,6 @@ Designed for reproducibility, transparency, and seamless integration with large-
 - **Detects mislabeled/abnormal samples** within each individual based on Bray-Curtis distances.
 - **Identifies batch-level duplicates ("cheating" samples)** for quality assurance.
 - **Suggests the most likely true sample partner** for each flagged mislabel.
-- Produces **clean, simple, and machine-friendly output files** with clear documentation.
-- Efficient: fast CLI help, vectorized analysis, scalable to thousands of samples.
 
 ---
 
