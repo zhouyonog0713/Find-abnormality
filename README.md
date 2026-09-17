@@ -2,7 +2,7 @@
 
 A tool for detecting **mislabeled**, **abnormal**, and **duplicate** samples in longitudinal metagenomic studies.  
 Designed for reproducibility, transparency, and seamless integration with large-scale bioinformatics workflows.
-![A introduction of the method](Figure1.pdf)
+![A introduction of the method](Figure1.png)
 
 ---
 
