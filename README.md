@@ -9,23 +9,47 @@ Find-abnormality is a computational framework designed to identify sample identi
 Longitudinal microbiome studies rely on repeated sampling from the same individuals. However, sample swaps, duplicated samples, and metadata errors can introduce abnormal samples that compromise downstream analyses.
 
 Find-abnormality addresses this challenge by integrating:
-
-Within-individual microbiome consistency analysis
-Graph-based abnormal sample detection
-Mislabel classification
-Optional strain-level genomic confirmation
-
+- Within-individual microbiome consistency analysis
+- Graph-based abnormal sample detection
+- Mislabel classification
+- Optional strain-level genomic confirmation
 The framework is designed for large-scale metagenomic datasets and provides interpretable evidence for each flagged sample.
----
-
-## Features
-
-- **Detects mislabeled/abnormal samples** within each individual based on Bray-Curtis distances.
-- **Identifies batch-level duplicates ("cheating" samples)** for quality assurance.
-- **Suggests the most likely true sample partner** for each flagged mislabel.
 
 ---
+# key features
 
+## 1. Longitudinal abnormality detection
+
+Find-abnormality identifies samples that deviate from the expected microbiome trajectory of an individual.
+
+The method uses:
+- Bray-Curtis dissimilarity
+- Within-individual distance ranking
+- Mutual nearest-neighbor relationships
+- Graph-based clustering
+to separate coherent longitudinal samples from potential abnormal samples.
+
+## 2. Mislabeled sample identification
+
+The framework detects two major types of sample identity errors:
+### Sample duplication
+
+Identifies samples that show unexpectedly high similarity between different individuals.
+
+Potential causes include:
+
+- accidental sample reuse
+- duplicate submission
+- metadata assignment errors
+### Sample swapping
+Identifies samples assigned to the wrong individual by comparing:
+- microbiome similarity
+- longitudinal consistency
+- candidate subject trajectories
+
+
+
+# Installation
 ## Requirements
 
 - **Python 3.7+**
