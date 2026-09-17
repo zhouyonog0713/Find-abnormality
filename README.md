@@ -1,9 +1,21 @@
-# Longitudinal Metagenome QC Tool
+# Find-abnormality
+## A longitudinal metagenomic framework for detecting abnormal, duplicated, and mislabeled samples
 
-A tool for detecting **mislabeled**, **abnormal**, and **duplicate** samples in longitudinal metagenomic studies.  
-Designed for reproducibility, transparency, and seamless integration with large-scale bioinformatics workflows.
 ![A introduction of the method](Figure1.png)
 
+# Overview
+Find-abnormality is a computational framework designed to identify sample identity errors and abnormal microbiome profiles in longitudinal metagenomic studies.
+
+Longitudinal microbiome studies rely on repeated sampling from the same individuals. However, sample swaps, duplicated samples, and metadata errors can introduce abnormal samples that compromise downstream analyses.
+
+Find-abnormality addresses this challenge by integrating:
+
+Within-individual microbiome consistency analysis
+Graph-based abnormal sample detection
+Mislabel classification
+Optional strain-level genomic confirmation
+
+The framework is designed for large-scale metagenomic datasets and provides interpretable evidence for each flagged sample.
 ---
 
 ## Features
