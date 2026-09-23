@@ -168,284 +168,19 @@ done < /storeData/zhouy/01_fenbaobao/public/PRJEB38984_analyses/strainphlan/link
 
 The `--mutation_rates` option produces an SGB-specific pairwise mutation-rate matrix. The marker filters retain markers present in at least one sample and samples containing at least 10 markers.
 
-## Summarize mutation rates for abnormal samples
-
-The following reusable command-line script summarizes SGB-specific mutation rates for any set of abnormal samples. It:
-
-- accepts a glob pattern instead of project-specific paths;
-- reads abnormal samples and optional candidate assignments from a TSV file;
-- normalizes sample names consistently across matrix rows and columns;
-- validates that each mutation matrix is square and has unique sample IDs;
-- uses vectorized NumPy indexing to extract pairwise values efficiently;
-- compares each abnormal sample with its recorded patient and, when supplied, a candidate patient;
-- optionally includes background pairs that do not contain the abnormal sample; and
-- writes one tidy, tab-delimited result table.
+## Sort and Creat abnormal candidates
 
 Create a query file such as `abnormal_samples.tsv`:
 
 | sample_id | recorded_patient | candidate_patient |
 |---|---|---|
-| W0075_3 | W0075 | W0020 |
-| W0069_4 | W0069 | |
+| W0020_3 | W0020 | W0075 |
+| W0040_3 | W0040 | W0077 |
+| W0082_3 | W0082 | W0083 |
+| W0084_3 | W0084 | W0045 |
+| W0090_3 | W0090 | W0039 |
 
 Only `sample_id` is required. If `recorded_patient` is omitted, the script derives it from the portion of the sample ID before the first underscore. `candidate_patient` is optional.
-
-```python
-#!/usr/bin/env python3
-"""Summarize StrainPhlAn mutation rates for potentially abnormal samples."""
-
-import argparse
-import os
-from glob import glob
-from pathlib import Path
-
-import numpy as np
-import pandas as pd
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Summarize mutation rates involving abnormal samples."
-    )
-    parser.add_argument(
-        "--mutation-glob",
-        required=True,
-        help="Quoted glob matching StrainPhlAn .mutation files.",
-    )
-    parser.add_argument(
-        "--queries",
-        required=True,
-        help=(
-            "TSV containing sample_id and optional recorded_patient and "
-            "candidate_patient columns."
-        ),
-    )
-    parser.add_argument("--output", required=True, help="Output TSV path.")
-    parser.add_argument(
-        "--min-recorded-samples",
-        type=int,
-        default=3,
-        help="Minimum number of recorded-patient samples per SGB (default: 3).",
-    )
-    parser.add_argument(
-        "--scale",
-        type=float,
-        default=1000.0,
-        help="Mutation-rate multiplier (default: 1000).",
-    )
-    parser.add_argument(
-        "--patient-separator",
-        default="_",
-        help="Separator used to derive patient IDs from sample IDs (default: _).",
-    )
-    parser.add_argument(
-        "--strip-suffix",
-        default=".fastq",
-        help="Suffix removed from sample IDs (default: .fastq).",
-    )
-    parser.add_argument(
-        "--include-background",
-        action="store_true",
-        help="Also report selected pairs that do not contain the query sample.",
-    )
-    return parser.parse_args()
-
-
-def normalize_id(value, suffix):
-    """Remove a terminal sequencing-file suffix from one sample ID."""
-    value = str(value).strip()
-    return value[: -len(suffix)] if suffix and value.endswith(suffix) else value
-
-
-def patient_id(sample_id, separator):
-    """Derive a patient ID from a normalized sample ID."""
-    return sample_id.split(separator, 1)[0]
-
-
-def load_queries(path, suffix, separator):
-    queries = pd.read_csv(path, sep="\t", dtype=str).fillna("")
-    if "sample_id" not in queries.columns:
-        raise ValueError("Query TSV must contain a 'sample_id' column")
-
-    queries["sample_id"] = queries["sample_id"].map(
-        lambda value: normalize_id(value, suffix)
-    )
-    if "recorded_patient" not in queries.columns:
-        queries["recorded_patient"] = ""
-    if "candidate_patient" not in queries.columns:
-        queries["candidate_patient"] = ""
-
-    missing = queries["recorded_patient"].eq("")
-    queries.loc[missing, "recorded_patient"] = queries.loc[
-        missing, "sample_id"
-    ].map(lambda value: patient_id(value, separator))
-
-    if queries["sample_id"].duplicated().any():
-        duplicates = queries.loc[
-            queries["sample_id"].duplicated(), "sample_id"
-        ].tolist()
-        raise ValueError(f"Duplicate query sample IDs: {duplicates}")
-    return queries
-
-
-def load_mutation_matrix(path, suffix):
-    matrix = pd.read_csv(path, sep="\t", index_col="ids")
-    matrix.index = [normalize_id(value, suffix) for value in matrix.index]
-    matrix.columns = [normalize_id(value, suffix) for value in matrix.columns]
-
-    if matrix.index.has_duplicates or matrix.columns.has_duplicates:
-        raise ValueError("duplicate sample IDs after normalization")
-
-    shared = matrix.index.intersection(matrix.columns, sort=False)
-    if shared.empty:
-        raise ValueError("row and column sample IDs do not overlap")
-
-    matrix = matrix.loc[shared, shared].apply(pd.to_numeric, errors="coerce")
-    return matrix
-
-
-def summarize_query(
-    matrix,
-    query_sample,
-    recorded_patient,
-    candidate_patient,
-    sgb,
-    source_file,
-    separator,
-    scale,
-    min_recorded_samples,
-    include_background,
-):
-    names = matrix.index.to_numpy(dtype=str)
-    patients = np.array([patient_id(name, separator) for name in names])
-
-    if np.count_nonzero(names == query_sample) != 1:
-        return pd.DataFrame()
-    if np.count_nonzero(patients == recorded_patient) < min_recorded_samples:
-        return pd.DataFrame()
-
-    selected_patients = {recorded_patient}
-    if candidate_patient:
-        selected_patients.add(candidate_patient)
-
-    keep = np.isin(patients, list(selected_patients)) | (names == query_sample)
-    selected = matrix.loc[names[keep], names[keep]]
-    selected_names = selected.index.to_numpy(dtype=str)
-    selected_patients_array = np.array(
-        [patient_id(name, separator) for name in selected_names]
-    )
-
-    row_idx, col_idx = np.triu_indices(len(selected_names), k=1)
-    sample1 = selected_names[row_idx]
-    sample2 = selected_names[col_idx]
-    patient1 = selected_patients_array[row_idx]
-    patient2 = selected_patients_array[col_idx]
-    values = selected.to_numpy(dtype=float)[row_idx, col_idx]
-    involves_query = (sample1 == query_sample) | (sample2 == query_sample)
-
-    valid = ~np.isnan(values)
-    if not include_background:
-        valid &= involves_query
-
-    result = pd.DataFrame(
-        {
-            "query_sample": query_sample,
-            "recorded_patient": recorded_patient,
-            "candidate_patient": candidate_patient,
-            "sample1": sample1[valid],
-            "sample2": sample2[valid],
-            "patient1": patient1[valid],
-            "patient2": patient2[valid],
-            "comparison_type": np.where(
-                patient1[valid] == patient2[valid], "intra", "inter"
-            ),
-            "involves_query": involves_query[valid],
-            "mutation_rate": values[valid],
-            "mutation_rate_scaled": np.round(values[valid] * scale, 3),
-            "SGB": sgb,
-            "source_file": source_file,
-        }
-    )
-    return result
-
-
-def main():
-    args = parse_args()
-    queries = load_queries(
-        args.queries,
-        args.strip_suffix,
-        args.patient_separator,
-    )
-    mutation_files = sorted(glob(args.mutation_glob))
-    if not mutation_files:
-        raise FileNotFoundError(
-            f"No mutation files matched: {args.mutation_glob}"
-        )
-
-    outputs = []
-    skipped = []
-
-    for mutation_file in mutation_files:
-        sgb = Path(mutation_file).name.removesuffix(".mutation")
-        try:
-            matrix = load_mutation_matrix(mutation_file, args.strip_suffix)
-        except (OSError, ValueError, KeyError) as error:
-            skipped.append(f"{mutation_file}: {error}")
-            continue
-
-        available = set(matrix.index)
-        for query in queries.itertuples(index=False):
-            if query.sample_id not in available:
-                continue
-            summary = summarize_query(
-                matrix=matrix,
-                query_sample=query.sample_id,
-                recorded_patient=query.recorded_patient,
-                candidate_patient=query.candidate_patient,
-                sgb=sgb,
-                source_file=os.path.abspath(mutation_file),
-                separator=args.patient_separator,
-                scale=args.scale,
-                min_recorded_samples=args.min_recorded_samples,
-                include_background=args.include_background,
-            )
-            if not summary.empty:
-                outputs.append(summary)
-
-    if outputs:
-        result = pd.concat(outputs, ignore_index=True)
-    else:
-        result = pd.DataFrame(
-            columns=[
-                "query_sample", "recorded_patient", "candidate_patient",
-                "sample1", "sample2", "patient1", "patient2",
-                "comparison_type", "involves_query", "mutation_rate",
-                "mutation_rate_scaled", "SGB", "source_file",
-            ]
-        )
-
-    result.to_csv(args.output, sep="\t", index=False)
-    print(f"Wrote {len(result):,} comparisons to {args.output}")
-    if skipped:
-        print(f"Skipped {len(skipped)} invalid mutation files:")
-        for message in skipped:
-            print(f"  - {message}")
-
-
-if __name__ == "__main__":
-    main()
-```
-
-Save the script as `summarize_mutation_rates.py`, then run:
-
-```bash
-python summarize_mutation_rates.py \
-    --mutation-glob '/path/to/output_LP/*/*.mutation' \
-    --queries abnormal_samples.tsv \
-    --output abnormal_sample_mutation_rates.tsv
-```
-
-By default, the output contains only pairs involving an abnormal sample. Add `--include-background` to retain other within-cohort pairs for comparison. Candidate-patient samples are included automatically when `candidate_patient` is supplied in the query file.
 
 ## Visualize recorded- and candidate-patient mutation rates
 
@@ -466,8 +201,10 @@ python find_abnormality.py \
 ```
 
 The default image format is PNG. Use `--stage3-plot-format pdf` or `--stage3-plot-format svg` for publication-oriented vector output. If `--stage3-plot-dir` is omitted, figures are written to `<suffix>_stage3_boxplots`.
-
 Each figure is named `<sample_id>_mutation_rates.<format>`. Lower log10 values indicate greater strain similarity. The box shows the median and interquartile range, while overlaid points show the underlying comparisons across samples and shared SGBs.
+
+
+
 
 ## Interpretation
 
