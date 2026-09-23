@@ -203,8 +203,15 @@ python find_abnormality.py \
 The default image format is PNG. Use `--stage3-plot-format pdf` or `--stage3-plot-format svg` for publication-oriented vector output. If `--stage3-plot-dir` is omitted, figures are written to `<suffix>_stage3_boxplots`.
 Each figure is named `<sample_id>_mutation_rates.<format>`. Lower log10 values indicate greater strain similarity. The box shows the median and interquartile range, while overlaid points show the underlying comparisons across samples and shared SGBs.
 
+### Project Image (example)
 
-
+<p align="center">
+  <img src="images/W0020_3_mutation_rates.png" width="18%">
+  <img src="images/W0040_3_mutation_rates.png" width="18%">
+  <img src="images/W0082_3_mutation_rates.png" width="18%">
+  <img src="images/W0084_3_mutation_rates.png" width="18%">
+  <img src="images/W0090_3_mutation_rates.png" width="18%">
+</p>
 
 ## Interpretation
 
