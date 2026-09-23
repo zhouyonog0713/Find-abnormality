@@ -163,7 +163,7 @@ while read -r sgb; do
         --marker_in_n_samples 1 \
         --sample_with_n_markers 10 \
         --phylophlan_mode accurate
-done < /storeData/zhouy/01_fenbaobao/public/PRJEB38984_analyses/strainphlan/link/batch_0_strain.link
+done < batch_0_strain.link
 ```
 
 The `--mutation_rates` option produces an SGB-specific pairwise mutation-rate matrix. The marker filters retain markers present in at least one sample and samples containing at least 10 markers.
@@ -212,6 +212,7 @@ Each figure is named `<sample_id>_mutation_rates.<format>`. Lower log10 values i
   <img src="images/W0084_3_mutation_rates.png" width="18%">
   <img src="images/W0090_3_mutation_rates.png" width="18%">
 </p>
+
 
 ## Interpretation
 
